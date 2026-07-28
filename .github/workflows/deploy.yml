@@ -45,6 +45,9 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Convert Repository Name to Lowercase
+        run: echo "IMAGE_NAME=$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
       
       - name: Log in to GitHub Container Registry (GHCR)
         uses: docker/login-action@v3
@@ -81,18 +84,20 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           password: ${{ secrets.SERVER_PASSWORD }}
           script: |
-            # 1. เข้าไปที่โฟลเดอร์ Deploy บน Server (ที่คุณเคยไปสร้างไว้)
+            # เข้าไปที่โฟลเดอร์ Deploy บน Server (ที่คุณเคยไปสร้างไว้)
             cd ~/Panaprisin_Project/Deploy
             
-            # 2. ล็อกอิน GHCR เพื่อสิทธิ์ในการดึง Image ล่าสุดลงมา
+            # ล็อกอิน GHCR เพื่อสิทธิ์ในการดึง Image ล่าสุดลงมา
             echo ${{ secrets.GITHUB_TOKEN }} | docker login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
             
-            # 3. สั่งดึง Image และรันคอนเทนเนอร์ใหม่แทนที่ตัวเก่า
+            export GITHUB_REPOSITORY=$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]')
+
+            # สั่งดึง Image และรันคอนเทนเนอร์ใหม่แทนที่ตัวเก่า
             docker-compose -f docker-compose.prod.yml pull
             docker-compose -f docker-compose.prod.yml up -d --remove-orphans
             
-            # 4. แยกการอัปเดตฐานข้อมูลออกมาต่างหาก เพื่อป้องกัน Race Condition ตอนเริ่มเซิร์ฟเวอร์
+            # แยกการอัปเดตฐานข้อมูลออกมาต่างหาก เพื่อป้องกัน Race Condition ตอนเริ่มเซิร์ฟเวอร์
             docker exec panaprisin_backend npx prisma migrate deploy
             
-            # 5. ล้าง Image เก่าๆ เพื่อไม่ให้ดิสก์ของ Server เต็ม
+            # ล้าง Image เก่าๆ เพื่อไม่ให้ดิสก์ของ Server เต็ม
             docker image prune -f
