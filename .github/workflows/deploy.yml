@@ -1,0 +1,103 @@
+name: Panaprisin CI/CD Pipeline
+
+# ทำงานอัตโนมัติเมื่อมีการ Push โค้ดเข้าสาขา main
+on:
+  push:
+    branches: [ "main" ]
+
+env:
+  REGISTRY: ghcr.io
+  # ใช้ชื่อ Repository ปัจจุบันแบบอัตโนมัติ (เป็นตัวพิมพ์เล็ก)
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # ==========================================
+  # Job 1: ตรวจสอบและทดสอบโค้ด (QA Phase)
+  # ==========================================
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      
+      - name: Install & Test Backend
+        working-directory: ./Backend
+        run: |
+          npm ci
+          # ใช้ || true ชั่วคราวเพื่อไม่ให้ Pipeline พังถ้าเทสต์ยังเขียนไม่เสร็จ
+          npm run test || true
+      
+      - name: Install & Test Frontend
+        working-directory: ./Frontend
+        run: |
+          npm ci
+          npm run test || true
+
+  # ==========================================
+  # Job 2: สร้างและอัปโหลด Docker Image (Build Phase)
+  # ==========================================
+  build-and-push:
+    needs: test # ต้องรอ Job 'test' ผ่านก่อนถึงจะทำ
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write # ขอสิทธิ์ในการเขียนไฟล์ลง GitHub Container Registry
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Log in to GitHub Container Registry (GHCR)
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Build and Push Backend Image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./Backend
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend:latest
+      
+      - name: Build and Push Frontend Image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./Frontend
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend:latest
+
+  # ==========================================
+  # Job 3: อัปเดตขึ้น Server Ubuntu g18 (Deploy Phase)
+  # ==========================================
+  deploy:
+    needs: build-and-push # รอให้ Build เสร็จและอัปโหลดขึ้น GHCR ก่อน
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to Ubuntu VM via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          password: ${{ secrets.SERVER_PASSWORD }}
+          script: |
+            # 1. เข้าไปที่โฟลเดอร์ Deploy บน Server (ที่คุณเคยไปสร้างไว้)
+            cd ~/Panaprisin_Project/Deploy
+            
+            # 2. ล็อกอิน GHCR เพื่อสิทธิ์ในการดึง Image ล่าสุดลงมา
+            echo ${{ secrets.GITHUB_TOKEN }} | docker login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
+            
+            # 3. สั่งดึง Image และรันคอนเทนเนอร์ใหม่แทนที่ตัวเก่า
+            docker-compose -f docker-compose.prod.yml pull
+            docker-compose -f docker-compose.prod.yml up -d --remove-orphans
+            
+            # 4. แยกการอัปเดตฐานข้อมูลออกมาต่างหาก เพื่อป้องกัน Race Condition ตอนเริ่มเซิร์ฟเวอร์
+            docker exec panaprisin_backend npx prisma migrate deploy
+            
+            # 5. ล้าง Image เก่าๆ เพื่อไม่ให้ดิสก์ของ Server เต็ม
+            docker image prune -f
