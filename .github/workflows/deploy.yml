@@ -61,6 +61,5 @@ jobs:
             export GITHUB_REPOSITORY=$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]')
             docker-compose -f docker-compose.prod.yml pull
             docker-compose -f docker-compose.prod.yml up -d --remove-orphans
-            # คำสั่งจัดการ Migration ของ Drizzle (ขึ้นอยู่กับสคริปต์ที่ทีมตั้งไว้ใน package.json)
             docker exec panaprisin_web npm run db:migrate || true
             docker image prune -f
