@@ -13,13 +13,21 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
       - name: Setup Node.js 22
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Install & Test Web
+          cache: 'npm'
+          cache-dependency-path: './panaprisin-web/package-lock.json'
+
+      - name: Install Dependencies
         working-directory: ./panaprisin-web
-        run: echo 
+        run: npm ci
+
+      - name: Run Jest Tests
+        working-directory: ./panaprisin-web
+        run: npm run test 
 
   build-and-push:
     needs: test
