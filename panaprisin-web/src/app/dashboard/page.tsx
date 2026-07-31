@@ -6,7 +6,7 @@ import Image from "next/image";
 
 // กำหนด Type ให้กับข้อมูลสินค้า (TypeScript)
 interface Product {
-  id: number;
+  id: string;
   name: string;
   price: number;
 }
@@ -20,7 +20,7 @@ export default function DashboardPage() {
   // State สำหรับ Modal (Popup ฟอร์ม)
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [currentId, setCurrentId] = useState<number | null>(null);
+  const [currentId, setCurrentId] = useState<string | null>(null);
   
   // State สำหรับฟอร์ม
   const [name, setName] = useState("");
@@ -48,11 +48,28 @@ export default function DashboardPage() {
   // เช็ค Token และโหลดข้อมูลตอนเปิดหน้าเว็บ
   useEffect(() => {
     const token = localStorage.getItem("token");
+
     if (!token) {
       router.push("/login");
-    } else {
-      fetchProducts(); // โหลดข้อมูลทันทีที่ล็อกอินผ่าน
+      return;
     }
+
+    const loadProducts = async () => {
+      try {
+        const res = await fetch("/api/products", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          setProducts(data);
+        }
+      } catch (error) {
+        console.error("ดึงข้อมูลล้มเหลว:", error);
+      }
+    };
+
+    void loadProducts();
   }, [router]);
 
   // ==========================================
@@ -91,7 +108,7 @@ export default function DashboardPage() {
   // ==========================================
   // 3. ลบข้อมูล (DELETE)
   // ==========================================
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: string) => {
     if (!confirm("คุณแน่ใจหรือไม่ว่าต้องการลบสินค้านี้?")) return;
     
     const token = localStorage.getItem("token");
