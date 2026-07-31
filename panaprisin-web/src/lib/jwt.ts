@@ -11,7 +11,7 @@ export async function verifyAuth(req: NextRequest) {
     }
     const token = authHeader.split(' ')[1];
     const decoded = jwt.verify(token, JWT_SECRET);
-    return decoded as { id: string; email: string };
+    return decoded as { id: number; email: string };
   } catch (error) {
     return null;
   }
