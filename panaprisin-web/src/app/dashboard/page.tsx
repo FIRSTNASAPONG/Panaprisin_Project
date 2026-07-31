@@ -98,7 +98,8 @@ export default function DashboardPage() {
         fetchProducts(); // โหลดข้อมูลใหม่หลังจากบันทึกเสร็จ
         closeModal();    // ปิด Popup
       } else {
-        alert("เกิดข้อผิดพลาดในการบันทึกข้อมูล");
+        const errorData = await res.json();
+        alert(`บันทึกไม่สำเร็จ: ${errorData.error || 'Unknown error'}`);
       }
     } catch (error) {
       console.error("บันทึกข้อมูลล้มเหลว:", error);
