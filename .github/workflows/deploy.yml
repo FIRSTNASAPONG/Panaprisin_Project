@@ -3,11 +3,20 @@ name: Panaprisin CI/CD Pipeline
 on:
   push:
     branches: [ "main" ]
-
+    paths-ignore:
+      - '**.md'
+      - '.gitignore'
+      - 'docs/**'
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 env:
   REGISTRY: ghcr.io
 
 jobs:
+  # ==========================================
+  # Job 1: Test
+  # ==========================================
   test:
     runs-on: ubuntu-latest
     steps:
@@ -19,8 +28,7 @@ jobs:
         with:
           node-version: '22'
           cache: 'npm'
-          cache-dependency-path: './panaprisin-web/package-lock.json'
-
+          cache-dependency-path: ./panaprisin-web/package-lock.json
       - name: Install Dependencies
         working-directory: ./panaprisin-web
         run: npm ci
@@ -29,6 +37,9 @@ jobs:
         working-directory: ./panaprisin-web
         run: npm run test 
 
+  # ==========================================
+  # Job 2: Build and Push
+  # ==========================================
   build-and-push:
     needs: test
     runs-on: ubuntu-latest
@@ -59,6 +70,9 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+  # ==========================================
+  # Job 3: Deploy
+  # ==========================================
   deploy:
     needs: build-and-push
     runs-on: self-hosted

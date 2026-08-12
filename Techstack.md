@@ -83,11 +83,11 @@ Next.js 16.2.12 (App Router)
 ## Testing
 | รายการ | เทคโนโลยี | หมายเหตุ |
 |---|---|---|
-| Test Runner | Jest `^30.4.2` (ผ่าน `next/jest`) | testEnvironment: `node` |
-| Assertion | `@testing-library/jest-dom` (`^7.0.0`) | - |
-| API Mocking | `Supertest` | วิธีที่ใช้ยิงเข้า Route Handlers (รัน server จริง หรือใช้ next-test-api-route-handler) |
-| TS support | `ts-jest` (`^29.4.12`), `ts-node` (`^10.9.2`) | - |
-| ตำแหน่งไฟล์เทส | `tests/api/*.test.ts` | - |
+| Test Runner | Jest `^30.4.2` (ผ่าน `next/jest`) | Runtime: `node`, ใช้สำหรับรัน unit/integration test |
+| Assertion | `@testing-library/jest-dom` (`^7.0.0`) | ใช้สำหรับ assertion ที่เกี่ยวกับ DOM/response behavior |
+| API Testing | `Supertest` | ใช้ส่ง HTTP request ไปยัง Next.js Route Handlers และตรวจสอบ status code / body response |
+| TS support | `ts-jest` (`^29.4.12`), `ts-node` (`^10.9.2`) | รองรับการเขียนและรัน test ที่เป็น TypeScript |
+| ตำแหน่งไฟล์เทส | `tests/api/*.test.ts` | ตัวอย่าง test API อยู่ที่ `auth.test.ts` |
 
 ---
 
